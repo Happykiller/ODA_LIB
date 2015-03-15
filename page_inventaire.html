@@ -1,0 +1,332 @@
+<!DOCTYPE html> 
+<html>
+  <head>
+    <!--META-->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=0.75">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge">
+
+    <!--CSS-->
+    <link rel="stylesheet" href="API/css/themes/default/jquery.mobile.min.css" />
+    <!--<link rel="stylesheet" href="API/css/datatables/css/jquery.dataTables.css"/>--> 
+    <link rel="stylesheet" href="API/css/mycss.css" />
+    <link rel="stylesheet" href="css/mycss.css" />
+
+    <!--JS-->
+    <script type="text/javascript" src="API/js/jquery.min.js"></script>
+    <script type="text/javascript" src="API/js/jquery.mobile.min.js"></script>
+    <!--<script type="text/javascript" src="API/js/highcharts.js"></script>-->
+    <!--<script type="text/javascript" src="API/js/modules/exporting.js"></script>-->
+    <!--<script type="text/javascript" src="API/js/jquery.dataTables.min.js"></script>--> 
+    <script type="text/javascript" src="include/config.js"></script>
+    <script type="text/javascript" src="API/js/fonctions.js"></script>
+    <script type="text/javascript" src="js/fonctions.js"></script>
+
+    <script language="javascript" type="text/javascript">
+    checkMaintenance();
+    checkAuthentification();
+	
+    ///////////////////
+    //BLOCK VARIABLE GLOBAL
+    ///////////////////
+    var id_page = 102;
+    var g_filtres_tags = new Array();
+    var g_filtres_titres = new Array();
+
+    ///////////////////
+    //BLOCK FONCTIONS EVENEMENTS
+    ///////////////////
+    $(document).on('pageinit',function() {
+        try {
+            // Init commmun
+            init_commun();
+        } catch (er) {
+            log(0, "ERROR(init_home):" + er.message);
+        }
+    });
+
+    $(document).on('pageshow',function() {
+        try {
+            // Fin affichage commun
+            show_commun();
+        } catch (er) {
+            log(0, "ERROR(show):" + er.message);
+        }
+    });
+		
+    //Fin chargement page
+    function OnLoad() {
+        try {
+            // Init page
+            var inputTag = getParamGet("tag");
+            if((inputTag != "")&&(inputTag != null)){
+                g_filtres_tags[inputTag] = inputTag;
+                vueFiltres();
+            }
+            chargerBigTags();
+            chargerLivres();
+        } catch (er) {
+            log(0, "ERROR(OnLoad):" + er.message);
+        }
+    }
+    
+    function ecoute(p_obj, p_eventCode) {
+        try {
+
+            switch (p_eventCode) 
+            { 
+                case 13: 
+                    ajoutTitre();
+                    break; 
+                default: 
+                    break; 
+            }
+        } catch (er) {
+            log(0, "ERROR(ecoute):" + er.message);
+        }
+    }
+
+    function onblurInput(p_obj) {
+        try {
+            $("#tips_"+p_obj.name).text("");
+            
+            switch (p_obj.name) 
+            {
+                default: 
+                    break; 
+            }
+        } catch (er) {
+            log(0, "ERROR(checkIntput):" + er.message);
+        }
+    }
+
+    function onfocusInput(p_obj) {
+        try {
+            $("#label_"+p_obj.name).css("color", g_couleurFontDefaut);
+            $("#tips_"+p_obj.name).css("color", g_couleurFontTips);
+            $("#msgRetour").text("");
+
+            switch (p_obj.name) 
+            {
+                default: 
+                    break; 
+            }
+        } catch (er) {
+            log(0, "ERROR(onfocusInput):" + er.message);
+        }
+    }
+		
+    ///////////////////
+    //BLOCK FONCTIONS METIER
+    ///////////////////
+    function chargerLivres() {
+        try {
+            var v_titres = "";
+            var v_tags = "";
+            
+            for (var indice in g_filtres_titres) {
+                v_titres += g_filtres_titres[indice]+";";
+            }
+            
+            for (var indice in g_filtres_tags) {
+                v_tags += g_filtres_tags[indice]+";";
+            }
+            
+            var tabInput = { tags:v_tags, titres:v_titres };
+            callBD("phpsql/mysql_getSearchLivres.php", "POST", "json", tabInput, "vueLivres");
+        } catch (er) {
+            log(0, "ERROR(chargerLivres):" + er.message);
+        }
+    }
+    
+    function chargerBigTags() {
+        try {
+            var tabInput = {  };
+            callBD("phpsql/mysql_getBigTags.php", "POST", "json", tabInput, "vueBigTags");
+        } catch (er) {
+            log(0, "ERROR(chargerBigTags):" + er.message);
+        }
+    }
+    
+    function ajoutTitre() {
+        try {
+            var strTitre = $("#searchTitre").val();
+            g_filtres_titres[strTitre] = strTitre;
+            vueFiltres();
+            chargerLivres();
+        } catch (er) {
+            log(0, "ERROR(ajoutTitre):" + er.message);
+        }
+    }
+    
+    function ajoutTag(p_tag) {
+        try {
+            g_filtres_tags[p_tag] = p_tag;
+            vueFiltres();
+            chargerLivres();
+        } catch (er) {
+            log(0, "ERROR(ajoutTag):" + er.message);
+        }
+    }
+    
+    function retirerFiltreTitre(p_titre) {
+        try {
+            delete g_filtres_titres[p_titre];
+            vueFiltres();
+            chargerLivres();
+        } catch (er) {
+            log(0, "ERROR(ajoutTitre):" + er.message);
+        }
+    }
+    
+    function retirerFiltreTag(p_tag) {
+        try {
+            delete g_filtres_tags[p_tag];
+            vueFiltres();
+            chargerLivres();
+        } catch (er) {
+            log(0, "ERROR(ajoutTag):" + er.message);
+        }
+    }
+
+    ///////////////////
+    //BLOCK FONCTIONS AFFICHAGE
+    ///////////////////
+    function vueLivres(p_retour){
+        try {
+            var tabLivres = p_retour["data"]["resultat"]["data"];
+            var strhtml = "<ul data-role=\"listview\" data-inset=\"true\">";
+            
+            for (var indice in tabLivres) {
+                strhtml += "<li><a href=\"javascript:window.location = ('./page_livre.html?mili="+getMilise()+"&id="+tabLivres[indice]["id"]+"');\">";
+                if(tabLivres[indice]["apercu"] != ""){
+                    strhtml += "<img src=\"./apercu/"+tabLivres[indice]["id"]+"_"+tabLivres[indice]["apercu"]+"\" style=\"max-width: 80px; height: auto;\">";
+                }else{
+                    strhtml += "<img src=\"./ebook_overview/overview-x.jpg\">";
+                }
+                strhtml += "<h2>"+tabLivres[indice]["titre"]+"</h2>";
+                strhtml += "<p>"+tabLivres[indice]["date_parution"]+"</p></a>";
+                strhtml += "</li>";
+            }
+            
+             strhtml += "</ul>";
+            
+            $('#div_livres').html(strhtml).trigger('create');
+        } catch (er) {
+            log(0, "ERROR(vueLivres):" + er.message);
+        }
+    }
+    
+    function vueBigTags(p_retour){
+        try {
+            var tabBigTags = p_retour["data"]["resultat"]["data"];
+            var strhtml = "<center>";
+            
+            for (var indice in tabBigTags) {
+                strhtml += '<a href="#" onclick="ajoutTag(\''+tabBigTags[indice]["tag"]+'\');" class="ui-btn ui-corner-all ui-btn-inline ui-icon-delete ui-btn-icon-left" title="'+tabBigTags[indice]["tag"]+'">'+tabBigTags[indice]["tag"]+'</a>';
+            }
+            
+            strhtml += "</center>";
+            
+            $('#div_tags').html(strhtml).trigger('create');
+        } catch (er) {
+            log(0, "ERROR(vueBigTags):" + er.message);
+        }
+    }
+    
+    function vueFiltres(){
+        try {
+            var strhtml = "<center>";
+            
+            for (var indice in g_filtres_tags) {
+                strhtml += '<a href="#" onclick="retirerFiltreTag(\''+g_filtres_tags[indice]+'\');" class="ui-btn ui-corner-all ui-btn-inline ui-icon-delete ui-btn-icon-left" title="'+g_filtres_tags[indice]+'">'+g_filtres_tags[indice]+'</a>';
+            }
+            for (var indice in g_filtres_titres) {
+                strhtml += '<a href="#" onclick="retirerFiltreTitre(\''+g_filtres_titres[indice]+'\');" class="ui-btn ui-corner-all ui-btn-inline ui-icon-delete ui-btn-icon-left" title="'+g_filtres_titres[indice]+'">'+g_filtres_titres[indice]+'</a>';
+            }
+            
+            strhtml += "</center>";
+            
+            $('#div_filtres').html(strhtml).trigger('create');
+        } catch (er) {
+            log(0, "ERROR(vueFiltres):" + er.message);
+        }
+    }
+		
+    </script>	
+  </head>
+  <body onload="OnLoad();">
+    
+	<!-- page -->
+	<div data-role="page" data-title="Titre">
+	
+		<!-- /panel -->
+		<div data-role="panel" id="mypanel" data-display="overlay" data-position="left">
+
+		</div>
+		<!-- /panel -->
+	
+		<!-- header -->
+		<div data-role="header" data-position="fixed">
+			<a href="#mypanel" data-role="button" data-icon="home" data-iconpos="notext">home</a>
+			<h1 id="id_titre">titre</h1>
+			<a href="javascript:window.location = ('./page_contact.html?mili='+getMilise());" data-role="button" data-icon="info" data-iconpos="notext">Contact</a>
+		</div>
+		<!-- /header -->
+
+		<!-- content -->
+		<div data-role="content" id="main_content">
+                    
+                    <div class="ui-grid-b">
+                        <div class="ui-block-a" style="width:30%;">
+                            <div data-role="collapsible" data-collapsed="false" data-mini="true" id="content_searchLivres">
+                                <h4>Les filtres</h4>
+                                <div data-role="collapsible" data-collapsed="false" data-mini="true" id="content_newFiltresLivres">
+                                    <h4>Nouveau filtre</h4>
+                                    <div id="div_tags">
+                                        Vide
+                                    </div>  
+                                    <label for="search" id="lab_searchTitre">Titre :</label>
+                                    <input type="search" name="searchTitre" id="searchTitre" value="" placeholder="Mot du titre..." onkeyup="ecoute(this, event.keyCode);" onblur="onblurInput(this);" onfocus="onfocusInput(this);">
+                                    <a href="javascript:ajoutTitre();" data-role="button" data-inline="true" data-icon="arrow-r" data-mini="true">Soumettre</a>
+                                    <label id="msgRetour"></label>
+                                </div>
+                                
+                                <div data-role="collapsible" data-collapsed="false" data-mini="true" id="content_filtresLivres">
+                                    <h4>Vos filtres</h4>
+                                    <div id="div_filtres">
+                                        Vide
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="ui-block-b" style="width:1%;">
+                            &nbsp;
+                        </div>
+                        
+                        <div class="ui-block-c" style="width:69%;">
+                            <div data-role="collapsible" data-collapsed="false" data-mini="true" id="content_Livres">
+                                <h4>L'inventaire</h4>
+                                <div id="div_livres">
+                                        Vide
+                                </div>        
+                            </div>
+                        </div>
+                    </div>
+                    
+		</div>
+		<!-- /content -->
+		
+		<!-- footer -->
+		<div data-role="footer" data-position="fixed">
+			<a data-role="button" data-icon="search" data-iconpos="notext" class="ui-btn-left" href="javascript:window.location = ('./page_faq.html?mili='+getMilise());">FAQ</a>
+			<h1 id="id_affichageUser">User</h1>
+			<a data-role="button" data-icon="delete" data-iconpos="notext" class="ui-btn-right" href="javascript:window.location = ('./page_sortie.html?mili='+getMilise());">Logout</a>
+		</div>
+		<!-- /footer -->
+		
+	</div>
+	<!-- /page -->
+</body>
+</html>

@@ -1,0 +1,526 @@
+<!DOCTYPE html> 
+<html>
+  <head>
+    <!--META-->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=0.75">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge">
+
+    <!--CSS-->
+    <link rel="stylesheet" href="API/css/themes/default/jquery.mobile.min.css" />
+    <!--<link rel="stylesheet" href="API/css/datatables/css/jquery.dataTables.css"/>--> 
+    <link rel="stylesheet" href="API/css/mycss.css" />
+    <link rel="stylesheet" href="css/mycss.css" />
+
+    <!--JS-->
+    <script type="text/javascript" src="API/js/jquery.min.js"></script>
+    <script type="text/javascript" src="API/js/jquery.mobile.min.js"></script>
+    <!--<script type="text/javascript" src="API/js/highcharts.js"></script>-->
+    <!--<script type="text/javascript" src="API/js/modules/exporting.js"></script>-->
+    <!--<script type="text/javascript" src="API/js/jquery.dataTables.min.js"></script>--> 
+    <script type="text/javascript" src="include/config.js"></script>
+    <script type="text/javascript" src="API/js/fonctions.js"></script>
+    <script type="text/javascript" src="js/fonctions.js"></script>
+
+    <script language="javascript" type="text/javascript">
+    checkMaintenance();
+    checkAuthentification();
+	
+    ///////////////////
+    //BLOCK VARIABLE GLOBAL
+    ///////////////////
+    var id_page = 101;
+    var g_id_book = "0";
+    
+    var g_tab_testInput = new Array(); 
+    
+    g_tab_testInput["dateParution"]=false; 
+    g_tab_testInput["fichier_ebook"]=false; 
+    g_tab_testInput["objTr"]=false; 
+    g_tab_testInput["donateur"]=false; 
+    g_tab_testInput["resume"]=false; 
+    
+    g_tab_testInput["tag"]=false; 
+    
+    g_tab_testInput["emplacement"]=false; 
+    
+    var g_couleurFontBon = "#04B404";
+    var g_couleurFontMauvais = "#FF0000";
+    var g_couleurFontDefaut = "#333333";
+    var g_couleurFontTips = "#a1a1a1";
+
+    ///////////////////
+    //BLOCK FONCTIONS EVENEMENTS
+    ///////////////////
+    $(document).on('pageinit',function() {
+        try {
+            // Init commmun
+            init_commun();
+
+            // Init page
+            g_id_book = getParamGet("id");
+            chargerLivre(g_id_book);
+            chargerTag(g_id_book);
+            chargerEmplacement(g_id_book);
+        } catch (er) {
+            log(0, "ERROR(init_home):" + er.message);
+        }
+    });
+
+    $(document).on('pageshow',function() {
+        try {
+            // Fin affichage commun
+            show_commun();
+        } catch (er) {
+            log(0, "ERROR(show):" + er.message);
+        }
+    });
+
+    //Fin chargement page
+    function OnLoad() {
+        try {
+            // Fin chargement
+        } catch (er) {
+            log(0, "ERROR(OnLoad):" + er.message);
+        }
+    }
+    
+    function ecoute(p_obj, p_eventCode) {
+        try {
+            switch (p_eventCode) 
+            { 
+                case 13: 
+                    onblurInput(p_obj);
+                    switch (p_obj.name) 
+                    {
+                        case "dateParution" : 
+                        case "fichier_ebook" : 
+                        case "objTr" : 
+                        case "donateur" : 
+                        case "resume" : 
+                             updateLivre();
+                            break;
+                        case "tag" : 
+                            ajoutTag();
+                            break;
+                        case "emplacement" : 
+                            InsertEmplacement();
+                            break;
+                        default: 
+                            break; 
+                    }
+                    break; 
+                default: 
+                    break; 
+            }
+       } catch (er) {
+            log(0, "ERROR(ecoute):" + er.message);
+        }
+    }
+
+    function onblurInput(p_obj) {
+        try {
+            $("#tips_"+p_obj.name).text("");
+            
+            switch (p_obj.name) 
+            {
+                case "dateParution" : 
+                    var Model = new RegExp("^[0-9]{2,2}/[0-9]{2,2}/(19|20)[0-9]{2,2}$", "g");
+                    var test = p_obj.value.match(Model);
+                    if(test != null){
+                        $("#label_"+p_obj.name).css("color", g_couleurFontBon);
+                        g_tab_testInput[p_obj.name]=true;
+                    }else{
+                        $("#label_"+p_obj.name).css("color", g_couleurFontMauvais);
+                        g_tab_testInput[p_obj.name]=false;
+                    }
+                    break;
+                case "emplacement" : 
+                    var Model = new RegExp("^[a-zA-Z\-\' ,.éèàê]{2,}$", "g");
+                    var test = p_obj.value.match(Model);
+                    if(test != null){
+                        $("#label_"+p_obj.name).css("color", g_couleurFontBon);
+                        g_tab_testInput[p_obj.name]=true;
+                    }else{
+                        $("#label_"+p_obj.name).css("color", g_couleurFontMauvais);
+                        g_tab_testInput[p_obj.name]=false;
+                    }
+                    break;
+                case "tag" : 
+                    var Model = new RegExp("^[a-zA-Z\-\' ]{2,}$", "g");
+                    var test = p_obj.value.match(Model);
+                    if(test != null){
+                        $("#label_"+p_obj.name).css("color", g_couleurFontBon);
+                        g_tab_testInput[p_obj.name]=true;
+                    }else{
+                        $("#label_"+p_obj.name).css("color", g_couleurFontMauvais);
+                        g_tab_testInput[p_obj.name]=false;
+                    }
+                    break;
+                default: 
+                    break; 
+            }
+       } catch (er) {
+            log(0, "ERROR(checkIntput):" + er.message);
+        }
+    }
+
+    function onfocusInput(p_obj) {
+        try {
+            $("#label_"+p_obj.name).css("color", g_couleurFontDefaut);
+            $("#tips_"+p_obj.name).css("color", g_couleurFontTips);
+            $("#msgRetour").text("");
+
+            switch (p_obj.name) 
+            {
+                case "dateParution" : 
+                    $("#tips_"+p_obj.name).html("Format attendu dd/mm/yyyy.");
+                    break;
+                case "emplacement" : 
+                case "tag" : 
+                    $("#tips_"+p_obj.name).html("Au moins deux lettres.");
+                    break;
+                default: 
+                    break; 
+            }
+       } catch (er) {
+            log(0, "ERROR(onfocusInput):" + er.message);
+        }
+    }
+		
+    ///////////////////
+    //BLOCK FONCTIONS METIER
+    ///////////////////
+    function chargerLivre(p_id){
+        try {
+            var tabInput = { id:p_id, order:"id", orderSens:"desc" };
+            callBD("phpsql/mysql_getLivres.php", "POST", "json", tabInput, "vueLivre");
+        } catch (er) {
+            log(0, "ERROR(afficheLivres):" + er.message);
+        }
+    }
+    
+    function chargerTag(p_id){
+        try {
+            var tabInput = { id_livre:p_id, order:"id", orderSens:"desc" };
+            callBD("phpsql/mysql_getTagForLivre.php", "POST", "json", tabInput, "vueTag");
+        } catch (er) {
+            log(0, "ERROR(chargerTag):" + er.message);
+        }
+    }
+    
+    function chargerEmplacement(p_id){
+        try {
+            var tabInput = { id_livre:p_id, histo:"non", order:"id", orderSens:"desc" };
+            callBD("phpsql/mysql_getEmplacementForLivre.php", "POST", "json", tabInput, "vueEmplacement");
+        } catch (er) {
+            log(0, "ERROR(chargerEmplacement):" + er.message);
+        }
+    }
+    
+    function updateLivre() {
+        try {
+            var v_dateParution = $("#dateParution").val();
+            var v_donateur = $("#donateur").val();
+            var v_resume = $("#resume").val();
+            var v_fichier_ebook = $("#fichier_ebook").val();
+            var v_objTr = $('input:radio[name=objTr]:checked').val();
+            
+            var controle = false;
+            var strMsgChamps = "";
+            if(g_tab_testInput["dateParution"]){
+                controle = true;
+            }else{
+                strMsgChamps = "Vous devez remplir la date de parution.";
+            }
+            
+            if(controle){
+                $("#msgRetour").text("");
+                var tabInput = { id:g_id_book, dateParution:getStrDateUsFromFr(v_dateParution), donateur:v_donateur, resume:v_resume, actif:v_objTr, fichier_ebook:v_fichier_ebook };
+                callBD("phpsql/mysql_updateLivre.php", "POST", "json", tabInput, "retourUpdateLivre");
+            }else{
+                $("#msgRetour").css("color", g_couleurFontMauvais);
+                $("#msgRetour").html(strMsgChamps);
+            }
+        } catch (er) {
+            log(0, "ERROR(updateLivre):" + er.message);
+        }
+    }
+    
+    function retourUpdateLivre(p_retour) {
+        try {
+            if(p_retour["data"]["strErreur"] == "") {
+                notification("Mise &agrave; jour r&eacute;ussi.",_SUCCESS);
+            }else{
+                notification("Erreur dans la mise &agrave; jour.("+p_retour["data"]["strErreur"]+")",_ALERT);
+            }
+        } catch (er) {
+            log(0, "ERROR(retourUpdateLivre):" + er.message);
+        }
+    }
+    
+    function ajoutTag() {
+        try {
+            var v_tag = $("#tag").val();
+            
+            var controle = false;
+            var strMsgChamps = "";
+            if(g_tab_testInput["tag"]){
+                controle = true;
+            }else{
+                strMsgChamps = "Vous devez remplir le tag.";
+            }
+            
+            if(controle){
+                $("#msgRetourTag").text("");
+                var tabInput = { id_livre:g_id_book, tag:v_tag };
+                callBD("phpsql/mysql_insertTag.php", "POST", "json", tabInput, "retourAjoutTag");
+            }else{
+                $("#msgRetourTag").css("color", g_couleurFontMauvais);
+                $("#msgRetourTag").html(strMsgChamps);
+            }
+        } catch (er) {
+            log(0, "ERROR(ajoutTag):" + er.message);
+        }
+    }
+    
+    function retourAjoutTag(p_retour) {
+        try {
+            if(p_retour["data"]["strErreur"] == "") {
+                notification("Ajout du tag r&eacute;ussi.",_SUCCESS);
+                chargerTag(g_id_book);
+            }else{
+                notification("Erreur dans l'ajout du tag.("+p_retour["data"]["strErreur"]+")",_ALERT);
+            }
+        } catch (er) {
+            log(0, "ERROR(retourAjoutTag):" + er.message);
+        }
+    }
+    
+    function delTag(p_id) {
+        try {
+            $("#msgRetourTag").text("");
+            var tabInput = { id:p_id };
+            callBD("phpsql/mysql_deleteTag.php", "POST", "json", tabInput, "retourDelTag");
+        } catch (er) {
+            log(0, "ERROR(delLivre):" + er.message);
+        }
+    }
+    
+    function retourDelTag(p_retour) {
+        try {
+            if(p_retour["data"]["strErreur"] == "") {
+                notification("Suppression r&eacute;ussi.",_SUCCESS);
+                chargerTag(g_id_book);
+            }else{
+                notification("Erreur dans la Suppression.("+p_retour["data"]["strErreur"]+")",_ALERT);
+            }
+        } catch (er) {
+            log(0, "ERROR(retourDelTag):" + er.message);
+        }
+    }
+    
+    function InsertEmplacement() {
+        try {
+            var v_emplacement = $("#emplacement").val();
+            
+            var controle = false;
+            var strMsgChamps = "";
+            if(g_tab_testInput["emplacement"]){
+                controle = true;
+            }else{
+                strMsgChamps = "Vous devez d&eacute;finir l'emplacement.";
+            }
+            
+            if(controle){
+                $("#msgRetourEmplacement").text("");
+                var tabInput = { id_livre:g_id_book, emplacement:v_emplacement };
+                callBD("phpsql/mysql_insertEmplacement.php", "POST", "json", tabInput, "retourInsertEmplacement");
+            }else{
+                $("#msgRetourEmplacement").css("color", g_couleurFontMauvais);
+                $("#msgRetourEmplacement").html(strMsgChamps);
+            }
+        } catch (er) {
+            log(0, "ERROR(InsertEmplacement):" + er.message);
+        }
+    }
+    
+    function retourInsertEmplacement(p_retour) {
+        try {
+            if(p_retour["data"]["strErreur"] == "") {
+                notification("Emplacement redeffini.",_SUCCESS);
+            }else{
+                notification("Erreur pour le changement de l'emplacement.("+p_retour["data"]["strErreur"]+")",_ALERT);
+            }
+        } catch (er) {
+            log(0, "ERROR(retourInsertEmplacement):" + er.message);
+        }
+    }
+
+    ///////////////////
+    //BLOCK FONCTIONS AFFICHAGE
+    ///////////////////
+    function vueLivre(p_tabLivre){
+        try {
+            var tabLivre = p_tabLivre["data"]["resultat"]["data"];
+
+            $('#titre').html(tabLivre[0]["titre"]+" (N&deg;"+tabLivre[0]["id"]+")");
+            $('#dateParution').val(getStrDateFrFromUs(tabLivre[0]["date_parution"]));
+            $('#donateur').val(tabLivre[0]["donateur"]);
+            $('#resume').val(tabLivre[0]["resume"]);
+            $('#fichier_ebook').val(tabLivre[0]["fichier_ebook"]);
+            $('#dateCreation').html("Cr&eacute;ation:"+tabLivre[0]["date_creation"]);
+            $('#dateModif').html(", Modification:"+tabLivre[0]["date_motif"]);
+            $('input:radio[name="objTr"][value="'+tabLivre[0]["actif"]+'"]').prop('checked', true).checkboxradio("refresh");
+        } catch (er) {
+            log(0, "ERROR(vueLivres):" + er.message);
+            return "";
+        }
+    }
+    
+    function vueTag(p_tabTag){
+        try {
+            var tabTag = p_tabTag["data"]["resultat"]["data"];
+            var strhtml = "";
+            
+            for (var indice in tabTag) {
+                strhtml += '<a href="#" onclick="linkTag();" class="ui-btn ui-corner-all ui-btn-inline" title="'+tabTag[indice]["tag"]+'">'+tabTag[indice]["tag"]+'</a>';
+            }
+            
+            $('#div_tags').html(strhtml).trigger('create');
+        } catch (er) {
+            log(0, "ERROR(vueTag):" + er.message);
+            return "";
+        }
+    }
+    
+    function vueEmplacement(p_retour){
+        try {
+            if(p_retour["strErreur"] != ""){            
+                $('#emplacement').val(p_retour["data"]["resultat"]["emplacement"]);
+            }
+        } catch (er) {
+            log(0, "ERROR(vueEmplacement):" + er.message);
+            return "";
+        }
+    }
+
+    ///////////////////
+    //BLOCK FONCTIONS BD
+    ///////////////////
+    
+		
+    </script>
+	
+  </head>
+  <body onload="OnLoad();">
+    
+	<!-- page -->
+	<div data-role="page" data-title="Titre">
+	
+		<!-- /panel -->
+		<div data-role="panel" id="mypanel" data-display="overlay" data-position="left">
+
+		</div>
+		<!-- /panel -->
+	
+		<!-- header -->
+		<div data-role="header" data-position="fixed">
+			<a href="#mypanel" data-role="button" data-icon="home" data-iconpos="notext">home</a>
+			<h1 id="id_titre">titre</h1>
+			<a href="javascript:window.location = ('./page_contact.html?mili='+getMilise());" data-role="button" data-icon="info" data-iconpos="notext">Contact</a>
+		</div>
+		<!-- /header -->
+
+		<!-- content -->
+		<div data-role="content" id="main_content">
+			<div data-role="collapsible" data-collapsed="false" data-mini="true" id="content_editLivres">
+                            <h4>Editer le descriptif du livre</h4>
+                            <form action="" method="post">
+                                <div data-role="fieldcontain" data-mini="true">
+                                    <div class="ui-grid-a">
+                                        <div class="ui-block-a">
+                                            <label for="titre" id="label_titre" style="width: 75%"><b>Titre : </label><label id="titre">MonTitre</label><br>
+                                            <br>
+                                            <label for="dateParution" id="label_dateParution" style="width: 75%"><b>Date de parution* : </b></label><br>
+                                            <input type="text" name="dateParution" id="dateParution" value="" data-mini="true" placeholder="dd/mm/yyyy" onkeyup="ecoute(this, event.keyCode);" onblur="onblurInput(this);" onfocus="onfocusInput(this);"/><br>
+                                            <label for="dateParution" id="tips_dateParution" style="width: 75%"></label><br>
+                                            <label for="fichier_ebook" id="label_fichier_ebook" style="width: 75%"><b>Le fichier eBook : </b></label><br>
+                                            <input type="text" name="fichier_ebook" id="fichier_ebook" value="" data-mini="true" placeholder="nom du fichier ici" onkeyup="ecoute(this, event.keyCode);" onblur="onblurInput(this);" onfocus="onfocusInput(this);"/><br>
+                                            <label for="fichier_ebook" id="tips_fichier_ebook" style="width: 75%"></label><br>
+                                            <fieldset data-role="controlgroup" data-type="horizontal" data-mini="true">
+                                                <legend><b>Dans la librairie : </b></legend>
+                                                <input type="radio" name="objTr" id="objTr_1" value="1" />
+                                                <label for="objTr_1">Oui</label>
+                                                <input type="radio" name="objTr" id="objTr_0" value="0" />
+                                                <label for="objTr_0">Non</label>
+                                            </fieldset>
+                                        </div>
+                                        <div class="ui-block-b">
+                                            <label for="donateur" id="label_donateur" style="width: 75%"><b>Le donateur : </b></label><br>
+                                            <input type="text" name="donateur" id="donateur" value="" data-mini="true" placeholder="Nom du donateur ici" onkeyup="ecoute(this, event.keyCode);" onblur="onblurInput(this);" onfocus="onfocusInput(this);"/><br>
+                                            <label for="donateur" id="tips_donateur" style="width: 75%"></label><br>
+                                            <label for="resume" id="label_resume" style="width: 75%"><b>Le r&eacute;sum&eacute; : </b></label><br>
+                                            <input type="text" name="resume" id="resume" value="" data-mini="true" placeholder="R&eacute;sum&eacute; ici" onkeyup="ecoute(this, event.keyCode);" onblur="onblurInput(this);" onfocus="onfocusInput(this);"/><br>
+                                            <label for="resume" id="tips_resume" style="width: 75%"></label><br>
+                                            <label id="dateCreation"><b>Date cr&eacute;ation</label><label id="dateModif"><b>Date modification </b></label><br>
+                                        </div>
+                                    </div>
+                                </div>		
+                                <a href="javascript:updateLivre();" data-role="button" data-inline="true" data-icon="arrow-r" data-mini="true" id="submit">Mettre &agrave; jour</a>					
+                                <label id="msgRetour"></label>
+                            </form>
+			</div>
+                        
+                        <div data-role="collapsible" data-collapsed="false" data-mini="true" id="content_tag">
+                            <h4>Les mots cl&eacute;s</h4>
+                            <div class="ui-grid-a">
+                                <div class="ui-block-a">
+                                    <form action="" method="post">
+                                        <div data-role="fieldcontain" data-mini="true">
+                                            <label for="tag" id="label_tag" style="width: 75%">Un tag :</label><br>
+                                            <input type="text" name="tag" id="tag" value="" data-mini="true" placeholder="Votre tag" onkeyup="ecoute(this, event.keyCode);" onblur="onblurInput(this);" onfocus="onfocusInput(this);"/><a href="javascript:ajoutTag();" data-role="button" data-inline="true" data-icon="arrow-r" data-mini="true" id="submit" >Ajouter tag</a><br>
+                                            <label for="tag" id="tips_tag" style="width: 75%"></label><br>
+                                            <label id="msgRetourTag"></label>
+                                        </div>
+                                    </form>
+                                </div>
+                                <div class="ui-block-b">
+                                    <label id="listeTags" style="width: 75%">La liste des tags : </label>
+                                    <div id="div_tags">la liste est vide.</div>
+                                </div>
+                            </div>
+			</div>
+                    
+                        <div data-role="collapsible" data-collapsed="false" data-mini="true" id="content_emplacement">
+                            <h4>L'emplacement de la parution</h4>
+                            <div class="ui-grid-a">
+                                <div class="ui-block-a">
+                                    <form action="" method="post">
+                                        <div data-role="fieldcontain" data-mini="true">
+                                            <label for="emplacement" id="label_emplacement" style="width: 75%">L'emplacement :</label><br>
+                                            <input type="text" name="emplacement" id="emplacement" value="" data-mini="true" placeholder="L'emplacement de la parution" onkeyup="ecoute(this, event.keyCode);" onblur="onblurInput(this);" onfocus="onfocusInput(this);"/><a href="javascript:InsertEmplacement();" data-role="button" data-inline="true" data-icon="arrow-r" data-mini="true" id="submit" >D&eacute;finir l'emplacement</a><br>
+                                            <label for="emplacement" id="tips_emplacement" style="width: 75%"></label><br>
+                                            <label id="msgRetourEmplacement"></label>
+                                        </div>
+                                    </form>
+                                </div>
+                                <div class="ui-block-b">
+                                </div>
+                            </div>
+			</div>
+		</div>
+		<!-- /content -->
+		
+		<!-- footer -->
+		<div data-role="footer" data-position="fixed">
+			<a data-role="button" data-icon="search" data-iconpos="notext" class="ui-btn-left" href="javascript:window.location = ('./page_faq.html?mili='+getMilise());">FAQ</a>
+			<h1 id="id_affichageUser">User</h1>
+			<a data-role="button" data-icon="delete" data-iconpos="notext" class="ui-btn-right" href="javascript:window.location = ('./page_sortie.html?mili='+getMilise());">Logout</a>
+		</div>
+		<!-- /footer -->
+		
+	</div>
+	<!-- /page -->
+</body>
+</html>

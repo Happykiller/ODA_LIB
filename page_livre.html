@@ -1,0 +1,493 @@
+<!DOCTYPE html> 
+<html>
+  <head>
+    <!--META-->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=0.75">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge">
+
+    <!--CSS-->
+    <link rel="stylesheet" href="API/css/themes/default/jquery.mobile.min.css" />
+    <link rel="stylesheet" href="API/css/datatables/css/jquery.dataTables.css"/>
+    <link rel="stylesheet" href="API/css/mycss.css" />
+    <link rel="stylesheet" href="css/mycss.css" />
+
+    <!--JS-->
+    <script type="text/javascript" src="API/js/jquery.min.js"></script>
+    <script type="text/javascript" src="API/js/jquery.mobile.min.js"></script>
+    <!--<script type="text/javascript" src="API/js/highcharts.js"></script>-->
+    <!--<script type="text/javascript" src="API/js/modules/exporting.js"></script>-->
+    <script type="text/javascript" src="API/js/jquery.dataTables.min.js"></script>
+    <script type="text/javascript" src="include/config.js"></script>
+    <script type="text/javascript" src="API/js/fonctions.js"></script>
+    <script type="text/javascript" src="js/fonctions.js"></script>
+
+    <script language="javascript" type="text/javascript">
+    checkMaintenance();
+    checkAuthentification();
+	
+    ///////////////////
+    //BLOCK VARIABLE GLOBAL
+    ///////////////////
+    var id_page = 103;
+    var g_id_book = "0";
+    var reservEnCours;
+    
+    var g_tab_testInput = new Array(); 
+    
+    g_tab_testInput["dateParution"]=false; 
+    g_tab_testInput["fichier_ebook"]=false; 
+    g_tab_testInput["objTr"]=false; 
+    g_tab_testInput["donateur"]=false; 
+    g_tab_testInput["resume"]=false; 
+    
+    g_tab_testInput["tag"]=false; 
+    
+    g_tab_testInput["emplacement"]=false; 
+    
+    var g_couleurFontBon = "#04B404";
+    var g_couleurFontMauvais = "#FF0000";
+    var g_couleurFontDefaut = "#333333";
+    var g_couleurFontTips = "#a1a1a1";
+
+    ///////////////////
+    //BLOCK FONCTIONS EVENEMENTS
+    ///////////////////
+    $(document).on('pageinit',function() {
+        try {
+            // Init commmun
+            init_commun();
+        } catch (er) {
+            log(0, "ERROR(init_home):" + er.message);
+        }
+    });
+
+    $(document).on('pageshow',function() {
+        try {
+            // Fin affichage commun
+            show_commun();
+        } catch (er) {
+            log(0, "ERROR(show):" + er.message);
+        }
+    });
+
+    //Fin chargement page
+    function OnLoad() {
+        try {
+            // Init page
+            g_id_book = getParamGet("id");
+            chargerLivre(g_id_book);
+            chargerTag(g_id_book);
+            chargerEmplacement(g_id_book);
+            chargerReservation(g_id_book);
+        } catch (er) {
+            log(0, "ERROR(OnLoad):" + er.message);
+        }
+    }
+		
+    ///////////////////
+    //BLOCK FONCTIONS METIER
+    ///////////////////
+    function chargerLivre(p_id){
+        try {
+            var tabInput = { id:p_id, order:"id", orderSens:"desc" };
+            callBD("phpsql/mysql_getLivres.php", "POST", "json", tabInput, "vueLivre");
+        } catch (er) {
+            log(0, "ERROR(afficheLivres):" + er.message);
+        }
+    }
+    
+    function chargerTag(p_id){
+        try {
+            var tabInput = { id_livre:p_id, order:"id", orderSens:"desc" };
+            callBD("phpsql/mysql_getTagForLivre.php", "POST", "json", tabInput, "vueTag");
+        } catch (er) {
+            log(0, "ERROR(chargerTag):" + er.message);
+        }
+    }
+    
+    function chargerEmplacement(p_id){
+        try {
+            var tabInput = { id_livre:p_id, histo:"non", order:"id", orderSens:"desc" };
+            callBD("phpsql/mysql_getEmplacementForLivre.php", "POST", "json", tabInput, "vueEmplacement");
+        } catch (er) {
+            log(0, "ERROR(chargerEmplacement):" + er.message);
+        }
+    }
+    
+    /**
+     * @name chargerReservation
+     * @param {string} p_tabLivre
+     */
+    function chargerReservation(p_id){
+        try {
+            var tabInput = { id_livre : p_id, id_user : infoAuth["id_user"] };
+            callBD("phpsql/getReservations.php", "POST", "json", tabInput, "retourChargerReservation");
+        } catch (er) {
+            log(0, "ERROR(chargerReservation):" + er.message);
+        }
+    }
+    
+    /**
+     * @name retirer
+     */
+    function retirer(){
+        try {
+            var tabInput = { id_livre : g_id_book, id_user : infoAuth["id_user"] };
+            var retourJson = callBD("phpsql/setReservRetirer.php", "POST", "json", tabInput);
+            if(retourJson["strErreur"] == ""){
+                notification("Action bien prise en compte, votre num&eacute;ro de réservation est N&deg;"+retourJson["data"]["resultat"]["id"]+".",_SUCCES);
+                chargerReservation(g_id_book);
+            }else{
+                notification("Erreur : ("+retourJson["strErreur"]+")",_ALERT);
+            }
+        } catch (er) {
+            log(0, "ERROR(retirer):" + er.message);
+        }
+    }
+    
+    /**
+     * @name reserver
+     */
+    function reserver(){
+        try {
+            var tabInput = { id_livre : g_id_book, id_user : infoAuth["id_user"] };
+            var retourJson = callBD("phpsql/setReservReserver.php", "POST", "json", tabInput);
+            if(retourJson["strErreur"] == ""){
+                notification("Action bien prise en compte, votre num&eacute;ro de r&eacute;servation est N&deg;"+retourJson["data"]["resultat"]["id"]+".",_SUCCES);
+                chargerReservation(g_id_book);
+            }else{
+                notification("Erreur : ("+retourJson["strErreur"]+")",_ALERT);
+            }
+        } catch (er) {
+            log(0, "ERROR(reserver):" + er.message);
+        }
+    }
+    
+    /**
+     * @name annuler
+     */
+    function annuler(){
+        try {
+            var tabInput = { id_livre : g_id_book, id_user : infoAuth["id_user"] };
+            var retourJson = callBD("phpsql/setReservAnnuler.php", "POST", "json", tabInput);
+            if(retourJson["strErreur"] == ""){
+                notification("Annulation bien prise en compte.",_SUCCES);
+                chargerReservation(g_id_book);
+            }else{
+                notification("Erreur : ("+retourJson["strErreur"]+")",_ALERT);
+            }
+        } catch (er) {
+            log(0, "ERROR(annuler):" + er.message);
+        }
+    }
+    
+    /**
+     * @name rendre
+     */
+    function rendre(){
+        try {
+            var tabInput = { id_livre : g_id_book, id_user : infoAuth["id_user"] };
+            var retourJson = callBD("phpsql/setReservRendre.php", "POST", "json", tabInput);
+            if(retourJson["strErreur"] == ""){
+                notification("Retour de l'article bien pris en compte.",_SUCCES);
+                chargerReservation(g_id_book);
+            }else{
+                notification("Erreur : ("+retourJson["strErreur"]+")",_ALERT);
+            }
+        } catch (er) {
+            log(0, "ERROR(rendre):" + er.message);
+        }
+    }
+    
+    /**
+     * @name takeResa
+     */
+    function takeResa(){
+        try {
+            var tabInput = { id_livre : g_id_book, id_user : infoAuth["id_user"] };
+            var retourJson = callBD("phpsql/setReservTakeResa.php", "POST", "json", tabInput);
+            if(retourJson["strErreur"] == ""){
+                notification("R&eacute;cup&eacute;ration bien prise en compte.",_SUCCES);
+                chargerReservation(g_id_book);
+            }else{
+                notification("Erreur : ("+retourJson["strErreur"]+")",_ALERT);
+            }
+        } catch (er) {
+            log(0, "ERROR(takeResa):" + er.message);
+        }
+    }
+
+    ///////////////////
+    //BLOCK FONCTIONS AFFICHAGE
+    ///////////////////
+    function vueLivre(p_tabLivre){
+        try {
+            var tabLivre = p_tabLivre["data"]["resultat"]["data"];
+
+            $('#titre').html(tabLivre[0]["titre"]+" (N&deg;"+tabLivre[0]["id"]+")");
+            $('#dateParution').html(getStrDateFrFromUs(tabLivre[0]["date_parution"]));
+            $('#donateur').html(tabLivre[0]["donateur"]);
+            $('#resume').html(tabLivre[0]["resume"]);
+            $('#fichier_ebook').html(tabLivre[0]["fichier_ebook"]);
+            $('input:radio[name="objTr"][value="'+tabLivre[0]["actif"]+'"]').prop('checked', true).checkboxradio("refresh");
+            if(tabLivre[0]["apercu"] != ""){
+                $('#div_apercu').html("<img src=\"./apercu/"+tabLivre[0]["id"]+"_"+tabLivre[0]["apercu"]+"\" style=\"max-width: 300px; height: auto;\">");
+            }
+        } catch (er) {
+            log(0, "ERROR(vueLivres):" + er.message);
+        }
+    }
+    
+    function vueTag(p_tabTag){
+        try {
+            var tabTag = p_tabTag["data"]["resultat"]["data"];
+            var strhtml = "";
+            
+            for (var indice in tabTag) {
+                strhtml += '<a href="#" onclick="linkTag();" class="ui-btn ui-corner-all ui-btn-inline" title="'+tabTag[indice]["tag"]+'">'+tabTag[indice]["tag"]+'</a>';
+            }
+            
+            $('#div_tags').html(strhtml).trigger('create');
+        } catch (er) {
+            log(0, "ERROR(vueTag):" + er.message);
+        }
+    }
+    
+    function vueEmplacement(p_retour){
+        try {
+            if(p_retour["strErreur"] != ""){            
+                $('#emplacement').val(p_retour["data"]["resultat"]["emplacement"]);
+            }
+        } catch (er) {
+            log(0, "ERROR(vueEmplacement):" + er.message);
+        }
+    }
+    
+    /**
+     * @name retourChargerReservation
+     * @param {json} p_retour
+     */
+    function retourChargerReservation(p_retour){
+        try {
+            if(p_retour["strErreur"] == ""){            
+                if(p_retour["data"]["resultat"]["nombre"] == "0"){
+                    $('#content_reservation').hide();
+                    $('#div_reservation').html('');
+                    $('#action_button').html('<a href="javascript:retirer();" data-role="button" data-inline="true" data-icon="action" data-mini="true">Retirer</a>').trigger("create");
+                }else{
+                    //partie bouton action
+                    reservEnCours = {
+                        "id_resa" : p_retour["data"]["resultat"]["data"][0]["id"],
+                        "id_user" : p_retour["data"]["resultat"]["data"][0]["id_user"],
+                        "date_saisie" : p_retour["data"]["resultat"]["data"][0]["date_saisie"],
+                        "date_retrait" : p_retour["data"]["resultat"]["data"][0]["date_retrait"]
+                    };
+                    if(reservEnCours.id_user == infoAuth["id_user"]){
+                        if(reservEnCours.date_retrait != "0000-00-00 00:00:00"){
+                            $('#action_button').html('<a href="javascript:rendre();" data-role="button" data-inline="true" data-icon="back" data-mini="true">Rendre l\'article</a>').trigger("create");
+                        }else{
+                            $('#action_button').html('<a href="javascript:takeResa();" data-role="button" data-inline="true" data-icon="action" data-mini="true">R&eacute;cup&eacute;rer l\'article</a>').trigger("create");
+                        }
+                    }else{
+                        if(p_retour["data"]["possedeReserv"]["nb"] == "0"){
+                            $('#action_button').html('<a href="javascript:reserver();" data-role="button" data-inline="true" data-icon="calendar" data-mini="true">R&eacute;server l\'article</a>').trigger("create");
+                        }else{
+                            $('#action_button').html('<a href="javascript:annuler();" data-role="button" data-inline="true" data-icon="delete" data-mini="true">Annuler ma r&eacute;servation</a>').trigger("create");
+                        }
+                    }
+                    
+                    //affichage reserv
+                    var objDataTable = objDataTableFromJsonArray(p_retour["data"]["resultat"]["data"]);
+            
+                    $('#div_reservation').html( '<table cellpadding="0" cellspacing="0" border="0" class="display" id="tab_reservation"></table>' );
+                    var oTable = $('#tab_reservation').dataTable( {
+                        "oLanguage": {"sUrl": "API/css/datatables/dataTables_I8N/lang_FR.json"},
+                        "iDisplayLength": 10,
+                        "sPaginationType": "full_numbers",
+                        "aaData": objDataTable.data,
+                        "aaSorting": [[0,'asc']],
+                        "bScrollCollapse": true,
+                        "bAutoWidth": false,
+                        "aoColumns": [
+                            { sTitle : "Numéro", sClass : "left"},
+                            { sTitle : "Date de saisie", sClass : "center"},
+                            { sTitle : "Utilisateur", sClass : "left"},
+                            { sTitle : "Etat", sClass : "left"},
+                            { sTitle : "Action", sClass : "left"}
+                        ],
+                        aoColumnDefs: [
+                            {
+                                mRender: function ( data, type, row ) {
+                                    return row[objDataTable.entete["id"]];
+                                },
+                                aTargets: [ 0 ]
+                            },
+                            {
+                                mRender: function ( data, type, row ) {
+                                    if ( type == 'display' ) {
+                                        return getStrDateTimeFrFromUs(row[objDataTable.entete["date_saisie"]]);
+                                    }
+                                    return row[objDataTable.entete["date_saisie"]];
+                                },
+                                aTargets: [ 1 ]
+                            },
+                            {
+                                mRender: function ( data, type, row ) {
+                                    var strText = row[objDataTable.entete["nom"]]+" "+row[objDataTable.entete["prenom"]];
+                                    return strText;
+                                },
+                                aTargets: [ 2 ]
+                            },
+                            {
+                                mRender: function ( data, type, row ) {
+                                    var strText = "Etat";
+                                    if(row[objDataTable.entete["date_retrait"]] != "0000-00-00 00:00:00"){
+                                        strText = "Article retir&eacute;";
+                                    }else if(reservEnCours.id_resa == row[objDataTable.entete["id"]]){
+                                        strText = "En attente de récupération";
+                                    }else{
+                                        strText = "En attente de retour";
+                                    }
+                                    return strText;
+                                },
+                                aTargets: [ 3 ]
+                            },
+                            {
+                                mRender: function ( data, type, row ) {
+                                    var strText = "";
+                                    if((row[objDataTable.entete["date_retrait"]] == "0000-00-00 00:00:00")&&(row[objDataTable.entete["id_user"]] == infoAuth["id_user"])){
+                                        strText = '<a href="javascript:annuler();" data-role="button" data-inline="true" data-icon="delete" data-mini="true">Annuler ma r&eacute;servation</a>';
+                                    }
+                                    if((row[objDataTable.entete["date_retrait"]] != "0000-00-00 00:00:00")&&(row[objDataTable.entete["id_user"]] == infoAuth["id_user"])){
+                                        strText = '<a href="javascript:rendre();" data-role="button" data-inline="true" data-icon="back" data-mini="true">Rendre l\'article</a>';
+                                    }
+                                    return strText;
+                                },
+                                aTargets: [ 4 ]
+                            }
+                        ],
+                        "fnDrawCallback": function( oSettings ) {
+                            $('#tab_reservation').trigger('create');
+                        } 
+                    });
+                    
+                    $('#content_reservation').show();
+                }
+            }else{
+                notification("Erreur : ("+p_retour["strErreur"]+")",_ALERT);
+            }
+        } catch (er) {
+            log(0, "ERROR(retourChargerReservation):" + er.message);
+        }
+    }
+    
+		
+    </script>
+	
+  </head>
+  <body onload="OnLoad();">
+    
+	<!-- page -->
+	<div data-role="page" data-title="Titre">
+	
+		<!-- /panel -->
+		<div data-role="panel" id="mypanel" data-display="overlay" data-position="left">
+
+		</div>
+		<!-- /panel -->
+	
+		<!-- header -->
+		<div data-role="header" data-position="fixed">
+			<a href="#mypanel" data-role="button" data-icon="home" data-iconpos="notext">home</a>
+			<h1 id="id_titre">titre</h1>
+			<a href="javascript:window.location = ('./page_contact.html?mili='+getMilise());" data-role="button" data-icon="info" data-iconpos="notext">Contact</a>
+		</div>
+		<!-- /header -->
+
+		<!-- content -->
+		<div data-role="content" id="main_content">
+                    <!-- Menu header -->
+                    <div class="ui-grid-b ui-responsive">
+                        <div class="ui-block-a">
+                            <a href="javascript:window.location = ('./page_inventaire.html?mili='+getMilise());" data-role="button" data-inline="true" data-icon="arrow-r" data-mini="true">Vers l'inventaire</a>
+                        </div>
+                        <div class="ui-block-b">
+                            
+                        </div>
+                        <div class="ui-block-b" style="text-align: right">
+                            <div id="action_button"></div>
+                        </div>
+                    </div>
+                    <!-- /Menu header -->
+                    
+                    <div data-role="collapsible" data-collapsed="false" data-mini="true" id="content_editLivres">
+                        <h4>Description</h4>
+                        <center><div id="div_apercu"><img src="./ebook_overview/overview-x.jpg"></div></center>
+                        <div data-role="fieldcontain" data-mini="true">
+                            <div class="ui-grid-a">
+                                <div class="ui-block-a">
+                                    <label for="titre" id="label_titre" style="width: 75%"><b>Titre : </b></label><label id="titre">MonTitre</label><br>
+                                    <br>
+                                    <label for="dateParution" id="label_dateParution" style="width: 75%"><b>Date de parution* : </b></label>
+                                    <label id="dateParution"></label><br>
+                                    <br>
+
+                                    <label for="fichier_ebook" id="label_fichier_ebook" style="width: 75%"><b>Le fichier eBook : </b></label>
+                                    <label id="fichier_ebook"></label><br>
+                                    <br>
+
+                                    <fieldset data-role="controlgroup" data-type="horizontal" data-mini="true">
+                                        <legend><b>Dans la librairie : </b></legend>
+                                        <input type="radio" name="objTr" id="objTr_1" value="1" />
+                                        <label for="objTr_1">Oui</label>
+                                        <input type="radio" name="objTr" id="objTr_0" value="0" />
+                                        <label for="objTr_0">Non</label>
+                                    </fieldset>
+                                </div>
+                                <div class="ui-block-b">
+                                    <label for="donateur" id="label_donateur" style="width: 75%"><b>Le donateur : </b></label>
+                                    <label id="donateur"></label><br>
+                                    <br>
+
+                                    <label for="resume" id="label_resume" style="width: 75%"><b>Le r&eacute;sum&eacute; : </b></label>
+                                    <label id="resume"></label><br>
+                                    <br>
+
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div data-role="collapsible" data-collapsed="false" data-mini="true" id="content_tag">
+                        <h4>Les mots cl&eacute;s</h4>
+                            <label id="listeTags" style="width: 75%">La liste des tags : </label>
+                            <div id="div_tags">la liste est vide.</div>
+                    </div>
+
+                    <div data-role="collapsible" data-collapsed="false" data-mini="true" id="content_emplacement">
+                        <h4>L'emplacement de la parution</h4>
+                        <label for="emplacement" id="label_emplacement" style="width: 75%">L'emplacement :</label>
+                        <label id="emplacement"></label><br>
+                    </div>
+
+                    <div data-role="collapsible" data-collapsed="false" data-mini="true" id="content_reservation" style="display: none;">
+                        <h4>Les r&eacute;servations</h4>
+                        <div id="div_reservation"></div>
+                        <br>
+                    </div>
+		</div>
+		<!-- /content -->
+		
+		<!-- footer -->
+		<div data-role="footer" data-position="fixed">
+			<a data-role="button" data-icon="search" data-iconpos="notext" class="ui-btn-left" href="javascript:window.location = ('./page_faq.html?mili='+getMilise());">FAQ</a>
+			<h1 id="id_affichageUser">User</h1>
+			<a data-role="button" data-icon="delete" data-iconpos="notext" class="ui-btn-right" href="javascript:window.location = ('./page_sortie.html?mili='+getMilise());">Logout</a>
+		</div>
+		<!-- /footer -->
+		
+	</div>
+	<!-- /page -->
+</body>
+</html>
